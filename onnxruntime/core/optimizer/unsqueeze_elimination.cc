@@ -5,6 +5,7 @@
 #include "core/common/logging/logging.h"
 #include "core/graph/graph_utils.h"
 #include "core/graph/graph.h"
+#include "core/session/environment.h"
 
 using namespace ONNX_NAMESPACE;
 using namespace onnxruntime::common;

@@ -5,6 +5,7 @@
 #include "core/common/common.h"
 #include "core/common/status.h"
 #include "core/common/logging/logging.h"
+#include "core/session/environment.h"
 
 #ifdef _WIN32
 #else  // POSIX

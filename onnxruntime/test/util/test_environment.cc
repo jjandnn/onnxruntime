@@ -26,44 +26,20 @@ static std::unique_ptr<::onnxruntime::logging::LoggingManager> s_default_logging
   return *s_default_logging_manager;
 }
 
-TestEnvironment::TestEnvironment(int argc, char** argv, bool create_default_logging_manager) {
-  ORT_ENFORCE(s_default_logging_manager == nullptr,
-              "Only expected one instance of TestEnvironment to be created.");
-
+TestEnvironment::TestEnvironment(int argc, char** argv) {
   std::clog << "Initializing unit testing." << std::endl;
   testing::InitGoogleTest(&argc, argv);
 
-  if (create_default_logging_manager) {
-    static std::string default_logger_id{"Default"};
-    s_default_logging_manager = onnxruntime::make_unique<LoggingManager>(std::unique_ptr<ISink>{new CLogSink{}},
-                                                        Severity::kWARNING,  // TODO make this configurable through
-                                                                             // cmd line arguments or some other way
-                                                        false,
-                                                        LoggingManager::InstanceType::Default,
-                                                        &default_logger_id);
-
-    // make sure default logging manager exists and is working
-    auto logger = ::onnxruntime::test::DefaultLoggingManager().DefaultLogger();
-    LOGS(logger, VERBOSE) << "Logging manager initialized.";
-  }
-
-#ifdef HAVE_FRAMEWORK_LIB
-  auto status = Environment::Create(runtime_environment_);
+  std::string default_logger_id{"Default"};
+  auto logging_manager = onnxruntime::make_unique<LoggingManager>(std::unique_ptr<ISink>{new CLogSink{}},
+                                                                  Severity::kWARNING,  // TODO cmd-line configurable?
+                                                                  false);
+  runtime_environment_ = onnxruntime::make_unique<Environment>(std::move(logging_manager));
+  Status status = runtime_environment_->Initialize(default_logger_id);
   ORT_ENFORCE(status == Status::OK(), "Failed creating runtime environment. ", status.ErrorMessage());
-#endif
 }
 
 TestEnvironment::~TestEnvironment() {
-#ifdef HAVE_FRAMEWORK_LIB
-  // release environment followed by logging manager so any log output from runtime environment shutdown
-  // using the default logger will succeed.
-  runtime_environment_ = nullptr;
-#else
-  ::google::protobuf::ShutdownProtobufLibrary();
-#endif
-
-  // dispose logging manager manually to make sure it's destructed before the default logging mutex
-  s_default_logging_manager = nullptr;
 }
 
 }  // namespace test

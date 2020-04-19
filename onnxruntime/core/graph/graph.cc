@@ -13,7 +13,6 @@
 #include <stack>
 
 #include "gsl/gsl"
-#include "core/common/logging/logging.h"
 #include "core/framework/tensor_shape.h"
 #include "core/framework/tensorprotoutils.h"
 #include "core/framework/utils.h"
@@ -24,7 +23,7 @@
 #include "core/graph/indexed_sub_graph.h"
 #include "core/graph/schema_registry.h"
 #include "core/graph/op.h"
-
+#include "core/session/environment.h"
 #include "onnx/checker.h"
 
 using namespace ONNX_NAMESPACE;

@@ -5,6 +5,7 @@
 #include "core/framework/session_options.h"
 #include "core/graph/graph_utils.h"
 #include "core/optimizer/free_dim_override_transformer.h"
+#include "core/session/environment.h"
 
 using namespace ONNX_NAMESPACE;
 using namespace ::onnxruntime::common;

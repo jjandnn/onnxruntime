@@ -4,6 +4,7 @@
 #pragma once
 #include "cuda_common.h"
 #include "core/framework/tensor.h"
+#include "core/session/environment.h"
 #include <cfloat>
 
 namespace onnxruntime {

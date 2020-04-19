@@ -34,6 +34,7 @@ limitations under the License.
 #include "core/common/common.h"
 #include "core/common/logging/logging.h"
 #include "core/platform/scoped_resource.h"
+#include "core/session/environment.h"
 
 namespace onnxruntime {
 

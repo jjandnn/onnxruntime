@@ -30,6 +30,7 @@ limitations under the License.
 #include "core/platform/env.h"
 #include "core/platform/scoped_resource.h"
 #include "core/platform/windows/telemetry.h"
+#include "core/session/environment.h"
 
 namespace onnxruntime {
 

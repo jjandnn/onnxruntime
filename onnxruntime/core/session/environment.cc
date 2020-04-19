@@ -23,29 +23,25 @@ namespace onnxruntime {
 using namespace ::onnxruntime::common;
 using namespace ONNX_NAMESPACE;
 
-std::once_flag schemaRegistrationOnceFlag;
+OrtMutex Environment::s_env_mutex_;
+bool Environment::s_env_initialized_ = false;
+logging::Logger* Environment::s_default_logger_ = nullptr;
 
-std::atomic<bool> Environment::is_initialized_{false};
 
-Status Environment::Create(std::unique_ptr<Environment>& environment) {
-  environment = std::unique_ptr<Environment>(new Environment());
-  auto status = environment->Initialize();
-  return status;
-}
 
-Status Environment::Initialize() {
+Status Environment::Initialize(const std::string& default_logger_id) 
+{  
   auto status = Status::OK();
-
   try {
     // Register Microsoft domain with min/max op_set version as 1/1.
-    std::call_once(schemaRegistrationOnceFlag, []() {
+    
       ONNX_NAMESPACE::OpSchemaRegistry::DomainToVersionRange::Instance().AddDomainToVersion(onnxruntime::kMSDomain, 1, 1);
       ONNX_NAMESPACE::OpSchemaRegistry::DomainToVersionRange::Instance().AddDomainToVersion(onnxruntime::kMSNchwcDomain, 1, 1);
       ONNX_NAMESPACE::OpSchemaRegistry::DomainToVersionRange::Instance().AddDomainToVersion(onnxruntime::kMSAutoMLDomain, 1, 1);
 #ifdef USE_DML
       ONNX_NAMESPACE::OpSchemaRegistry::DomainToVersionRange::Instance().AddDomainToVersion(onnxruntime::kMSDmlDomain, 1, 1);
 #endif
-      // Register contributed schemas.
+      // Register contributed op schemas.
       // The corresponding kernels are registered inside the appropriate execution provider.
 #ifndef DISABLE_CONTRIB_OPS
       contrib::RegisterContribSchemas();
@@ -56,9 +52,10 @@ Status Environment::Initialize() {
 #ifdef USE_DML
       dml::RegisterDmlSchemas();
 #endif
+	  // Register ONNX op schemas.  
       RegisterOnnxOperatorSetSchema();
       RegisterOnnxMLOperatorSetSchema();
-    });
+    
 
     // Register MemCpy schema;
 
@@ -90,19 +87,43 @@ Internal copy node
     // fire off startup telemetry (this call is idempotent)
     const Env& env = Env::Default();
     env.GetTelemetryProvider().LogProcessInfo();
-
-    is_initialized_ = true;
+	// Create default logger.
+	s_default_logger_ = loggingManager_->CreateLogger(default_logger_id).release();
   } catch (std::exception& ex) {
     status = Status{ONNXRUNTIME, common::RUNTIME_EXCEPTION, std::string{"Exception caught: "} + ex.what()};
   } catch (...) {
     status = Status{ONNXRUNTIME, common::RUNTIME_EXCEPTION};
-  }
-
+  }  
+  s_env_initialized_ = true;
   return status;
 }
 
-Environment::~Environment() {
-  ::google::protobuf::ShutdownProtobufLibrary();
+std::exception Environment::LogFatalAndCreateException(const char* category,
+                                                       const CodeLocation& location,
+                                                       const char* format_str, ...) {
+  std::string exception_msg;
+
+  // create Capture in separate scope so it gets destructed (leading to log output) before we throw.
+  {
+    ::onnxruntime::logging::Capture c{DefaultLogger(),
+                                      ::onnxruntime::logging::Severity::kFATAL, category,
+                                      ::onnxruntime::logging::DataType::SYSTEM, location};
+    va_list args;
+    va_start(args, format_str);
+
+    c.ProcessPrintf(format_str, args);
+    va_end(args);
+
+    exception_msg = c.Message();
+  }
+
+  return OnnxRuntimeException(location, exception_msg);
 }
 
+Environment::~Environment() {
+  std::lock_guard<OrtMutex> guard(s_env_mutex_);  
+  delete s_default_logger_;
+  s_default_logger_ = nullptr;
+  ::google::protobuf::ShutdownProtobufLibrary();  
+}
 }  // namespace onnxruntime

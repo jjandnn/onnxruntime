@@ -9,6 +9,7 @@
 #include "core/framework/kernel_registry.h"
 #include "core/framework/compute_capability.h"
 #include "core/providers/cuda/gpu_data_transfer.h"
+#include "core/session/environment.h"
 
 #ifndef DISABLE_CONTRIB_OPS
 #include "contrib_ops/cuda_contrib_kernels.h"

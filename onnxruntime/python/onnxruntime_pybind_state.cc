@@ -237,10 +237,8 @@ class SessionObjectInitializer {
   }
 
   operator Arg2() {
-    static std::string default_logger_id{"Default"};
     static LoggingManager default_logging_manager{std::unique_ptr<ISink>{new CErrSink{}},
-                                                  Severity::kWARNING, false, LoggingManager::InstanceType::Default,
-                                                  &default_logger_id};
+                                                  Severity::kWARNING, false};
     return &default_logging_manager;
   }
 
@@ -348,14 +346,6 @@ void addGlobalMethods(py::module& m) {
   m.def(
       "get_device", []() -> std::string { return BACKEND_DEVICE; },
       "Return the device used to compute the prediction (CPU, MKL, ...)");
-  m.def(
-      "set_default_logger_severity", [](int severity) {
-        ORT_ENFORCE(severity >= 0 && severity <= 4,
-                    "Invalid logging severity. 0:Verbose, 1:Info, 2:Warning, 3:Error, 4:Fatal");
-        logging::LoggingManager* default_logging_manager = SessionObjectInitializer::Get();
-        default_logging_manager->SetDefaultLoggerSeverity(static_cast<logging::Severity>(severity));
-      },
-      "Sets the default logging severity. 0:Verbose, 1:Info, 2:Warning, 3:Error, 4:Fatal");
   m.def(
       "get_all_providers", []() -> const std::vector<std::string>& { return GetAllProviders(); },
       "Return list of Execution Providers that this version of Onnxruntime can support.");
@@ -800,7 +790,6 @@ including arg name, arg type (contains both type and shape).)pbdoc")
       PyMemAllocatorEx obj;
   } allocators;
 #endif
-
 PYBIND11_MODULE(onnxruntime_pybind11_state, m) {
   m.doc() = "pybind11 stateful interface to ONNX runtime";
   RegisterExceptions(m);
@@ -851,23 +840,7 @@ PYBIND11_MODULE(onnxruntime_pybind11_state, m) {
 
 #endif
 
-  auto initialize = [&]() {
-    // Initialization of the module
-    ([]() -> void {
-      // import_array1() forces a void return value.
-      import_array1();
-    })();
-
-    static std::unique_ptr<Environment> env;
-    OrtPybindThrowIfError(Environment::Create(env));
-
-    static bool initialized = false;
-    if (initialized) {
-      return;
-    }
-    initialized = true;
-  };
-  initialize();
+  Ort::Env env;  
 
   addGlobalMethods(m);
   addObjectMethods(m);
